@@ -10,6 +10,7 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import android.widget.TextView
 import android.widget.Toast
 import me.fridayio.wasapplication.api.Api
 import me.fridayio.wasapplication.api.Client
@@ -37,7 +38,7 @@ class MainActivity : Activity(), SensorEventListener {
     private var movg = MovingAverageClass()
     private var kalman = KalmanClass()
     private var hrm = HRMeasureClass()
-
+    private var cycle: Int = 0
 
 
     private lateinit var binding: ActivityMainBinding
@@ -76,17 +77,14 @@ class MainActivity : Activity(), SensorEventListener {
         Handler(Looper.getMainLooper()).postDelayed(processing, 15000)
     }
 
-    var recordData = Runnable() {
+    override fun onPause() {
+        super.onPause()
         sensorMgr.unregisterListener(this)
-        Toast.makeText(this, "Data Sent", Toast.LENGTH_SHORT).show()
-        for (data in list) {
-            Log.d("output:", data.toString())
-        }
+        list.clear()
     }
 
     var processing =  Runnable() {
-        Toast.makeText(this, "Processing Data", Toast.LENGTH_SHORT).show()
-
+        sensorMgr.unregisterListener(this)
         var dxnOutput = dxn.DxNFilter(list)
         var movAvgOutput = movg.MovAvg(dxnOutput)
 
@@ -99,12 +97,18 @@ class MainActivity : Activity(), SensorEventListener {
             Log.d("HrOutput", data.toString())
         }
 
+        var HR = (hrResult[0] + hrResult[1])/2
+        binding.hrResult.text = HR.toInt().toString()
+
         for(data in dftRes) {
             Log.d("DftOutput", data.toString())
         }
 
         onPost(hrResult, dftRes)
         Toast.makeText(this,"Processing Done", Toast.LENGTH_SHORT).show()
+
+        cycle++
+        binding.cycle.text = cycle.toString()
 
         list.clear()
         onResume()
@@ -128,9 +132,19 @@ class MainActivity : Activity(), SensorEventListener {
 
             override fun onResponse(call: Call<PostResponse>, response: Response<PostResponse>) {
                 val res = response.body()
-                if (res?.result == 1) Log.d("Detection Output", "Bradycardia")
-                if (res?.result == 2) Log.d("Detection Output", "Tachycardia")
-                if (res?.result == 3) Log.d("Detection Output", "Normal")
+                if (res?.result == 1) {
+                    Log.d("Detection Output", "Bradycardia")
+                    binding.resultData.text = "Bradycardia"
+                }
+                if (res?.result == 2) {
+                    Log.d("Detection Output", "Tachycardia")
+                    binding.resultData.text = "Tachycardia"
+                }
+                if (res?.result == 3) {
+                    Log.d("Detection Output", "Normal")
+                    binding.resultData.text = "Normal"
+                }
+
             }
         })
     }
